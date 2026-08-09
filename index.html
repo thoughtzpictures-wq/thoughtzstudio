@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Thoughtz Studio — Gallery Delivery</title>
+  <meta name="description" content="Thoughtz Studio client photo delivery and favourite selection." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <!-- Static skeleton so Netlify build bot can detect this form; JS submission targets this same markup -->
+  <form name="favourites" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>
+    <input type="hidden" name="form-name" value="favourites" />
+    <input type="text" name="bot-field" />
+    <input type="text" name="project" />
+    <input type="text" name="frames" />
+    <input type="text" name="count" />
+  </form>
+
+  <div class="viewport">
+    <header class="studio-header">
+      <div class="brand">
+        <span>Thoughtz</span>
+        <span class="dot" aria-hidden="true">·</span>
+        <span>Studio</span>
+      </div>
+      <div class="counter" id="frameCounter">01 / 12</div>
+    </header>
+
+    <section class="project-info">
+      <h1 id="projectTitle">Project Memories</h1>
+      <p class="subtitle" id="projectSubtitle">Scene &bull; 12 frames</p>
+    </section>
+
+    <section class="carousel-wrap">
+      <div class="carousel" id="carousel" role="list" aria-label="Photo frames"></div>
+      <p class="swipe-label">Swipe to view frames</p>
+    </section>
+
+    <section class="action-card">
+      <h2>Take it with you</h2>
+      <p>Your gallery, yours to keep — at full quality.</p>
+      <button class="btn btn-solid" id="downloadAllBtn" type="button">Download All Frames</button>
+    </section>
+
+    <section class="action-card favourites-card">
+      <h2>Send your favourites</h2>
+      <p>These go straight to the studio so they know which frames you love.</p>
+      <div class="badge-row">
+        <span class="badge" id="favBadge">0 frames selected</span>
+      </div>
+      <button class="btn btn-send" id="sendFavBtn" type="button" disabled>Send Favourites to Studio</button>
+    </section>
+
+    <footer class="foot-note">
+      <span id="toast" class="toast" role="status" aria-live="polite"></span>
+    </footer>
+  </div>
+
+  <script src="/script.js"></script>
+</body>
+</html>

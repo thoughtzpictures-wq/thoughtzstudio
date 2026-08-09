@@ -1,0 +1,24 @@
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "images/uploads"
+public_folder: "/images/uploads"
+
+collections:
+  - name: "galleries"
+    label: "Client Galleries"
+    folder: "content/galleries"
+    create: true
+    slug: "{{slug}}"
+    format: "json"
+    fields:
+      - { label: "Project Slug / URL ID", name: "id", widget: "string", hint: "e.g., profect-memories-jmxdjl" }
+      - { label: "Client / Project Title", name: "title", widget: "string" }
+      - { label: "Scene Name", name: "scene", widget: "string", default: "Scene 01" }
+      - label: "Photos"
+        name: "photos"
+        widget: "list"
+        fields:
+          - { label: "Photo ID", name: "id", widget: "string" }
+          - { label: "Photo File", name: "url", widget: "image" }
