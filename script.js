@@ -66,55 +66,66 @@
       badge.textContent = "01 / " + formattedTotal;
     }
 
-    // 3. Locate Swiper Container & Wrapper
-    const swiperContainer = document.querySelector(".swiper, .swiper-container") || document.querySelector("[class*='swiper']");
-    const wrapper = document.querySelector(".swiper-wrapper, .slides-wrapper");
-
-    if (swiperContainer) {
-      swiperContainer.style.minHeight = "380px";
-      swiperContainer.style.width = "100%";
-      swiperContainer.style.display = "block";
-    }
-
-    if (wrapper) {
-      // Build slides with minimum dimensions so photos never collapse
-      let html = "";
-      for (let i = 0; i < gallery.photos.length; i++) {
-        html += '<div class="swiper-slide" style="display:flex; justify-content:center; align-items:center; min-height:350px; width:100%;">';
-        html += '<img src="' + gallery.photos[i].url + '" alt="' + gallery.title + ' - Frame ' + (i + 1) + '" style="max-width:100%; max-height:65vh; width:auto; height:auto; object-fit:contain; border-radius:12px; display:block;" loading="lazy" />';
-        html += '</div>';
-      }
-      wrapper.innerHTML = html;
-
-      // Initialize or update Swiper
-      if (swiperContainer && swiperContainer.swiper) {
-        swiperContainer.swiper.update();
-        swiperContainer.swiper.slideTo(0);
-      } else if (window.Swiper && swiperContainer) {
-        const sliderInstance = new window.Swiper(swiperContainer, {
-          slidesPerView: 1,
-          spaceBetween: 16,
-          loop: false,
-          observer: true,
-          observeParents: true,
-          pagination: { el: ".swiper-pagination", clickable: true },
-          navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
-          on: {
-            slideChange: function () {
-              const currentIdx = this.realIndex + 1;
-              const formattedCurrent = currentIdx < 10 ? "0" + currentIdx : currentIdx;
-              if (badge) {
-                badge.textContent = formattedCurrent + " / " + formattedTotal;
-              }
-            }
-          }
-        });
-
-        setTimeout(function() {
-          sliderInstance.update();
-        }, 200);
+    // 3. Locate "SWIPE TO VIEW FRAMES" label
+    let swipeHintEl = null;
+    const allEls = document.querySelectorAll("p, span, div, h2, h3");
+    for (let i = 0; i < allEls.length; i++) {
+      if (allEls[i].children.length === 0 && allEls[i].textContent.trim().toUpperCase().includes("SWIPE TO VIEW FRAMES")) {
+        swipeHintEl = allEls[i];
+        break;
       }
     }
+
+    // 4. Create or target explicit image carousel container
+    let galleryContainer = document.getElementById("studio-carousel");
+    if (!galleryContainer) {
+      galleryContainer = document.createElement("div");
+      galleryContainer.id = "studio-carousel";
+      
+      if (swipeHintEl && swipeHintEl.parentNode) {
+        swipeHintEl.parentNode.insertBefore(galleryContainer, swipeHintEl.nextSibling);
+      } else {
+        document.body.appendChild(galleryContainer);
+      }
+    }
+
+    // 5. Hide any old broken/collapsed swiper elements
+    const oldSwipers = document.querySelectorAll(".swiper, .swiper-container");
+    oldSwipers.forEach(function(el) {
+      if (el !== galleryContainer) el.style.display = "none";
+    });
+
+    // 6. Apply native, high-performance snap-scroll styles
+    galleryContainer.style.width = "100%";
+    galleryContainer.style.margin = "20px 0";
+    galleryContainer.style.display = "flex";
+    galleryContainer.style.overflowX = "auto";
+    galleryContainer.style.scrollSnapType = "x mandatory";
+    galleryContainer.style.webkitOverflowScrolling = "touch";
+    galleryContainer.style.gap = "16px";
+    galleryContainer.style.padding = "8px 0";
+
+    // 7. Inject photo slides
+    let html = "";
+    for (let i = 0; i < gallery.photos.length; i++) {
+      html += '<div style="flex: 0 0 100%; max-width: 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center;">';
+      html += '<img src="' + gallery.photos[i].url + '" alt="' + gallery.title + ' - Frame ' + (i + 1) + '" style="width: 100%; max-height: 60vh; object-fit: contain; border-radius: 16px; display: block;" loading="lazy" />';
+      html += '</div>';
+    }
+    galleryContainer.innerHTML = html;
+
+    // 8. Update counter dynamically as user swipes
+    galleryContainer.addEventListener("scroll", function() {
+      const scrollPos = galleryContainer.scrollLeft;
+      const width = galleryContainer.clientWidth;
+      if (width > 0) {
+        const currentIdx = Math.min(Math.round(scrollPos / width) + 1, count);
+        const formattedCurrent = currentIdx < 10 ? "0" + currentIdx : currentIdx;
+        if (badge) {
+          badge.textContent = formattedCurrent + " / " + formattedTotal;
+        }
+      }
+    });
   }
 
   document.addEventListener("DOMContentLoaded", loadGallery);
