@@ -198,3 +198,23 @@
   updateFavouritesUI();
   updateCounterFromScroll();
 })();
+// Function to automatically fetch all photos from a gallery folder
+async function getPhotosFromFolder(folderName) {
+  const repoOwner = "thoughtzpictures-wq";
+  const repoName = "thoughtzstudio";
+  const apiUrl = https://api.github.com/repos/${repoOwner}/${repoName}/contents/images/galleries/${folderName};
+
+  try {
+    const response = await fetch(apiUrl);
+    if (!response.ok) throw new Error("Folder not found");
+    const files = await response.json();
+
+    // Filter only image files (.jpg, .png, .webp, etc.)
+    return files
+      .filter(file => file.name.match(/\.(jpg|jpeg|png|webp)$/i))
+      .map(file => file.download_url);
+  } catch (error) {
+    console.error("Error loading gallery photos:", error);
+    return [];
+  }
+}
