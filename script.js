@@ -4,44 +4,19 @@
   const REPO_OWNER = "thoughtzpictures-wq";
   const REPO_NAME = "thoughtzstudio";
 
-  const GALLERIES = {
-    "profect-memories-jmxdjl": {
-      title: "Profect Memories",
-      scene: "Golden Hour Portraits",
-      photos: buildPhotos("profect", 12, 1),
-    },
-    "wedding-lane-9kfmz": {
-      title: "Wedding on Lane Street",
-      scene: "Ceremony & Reception",
-      photos: buildPhotos("wedding", 18, 200),
-    }
-  };
-
-  const DEFAULT_GALLERY_KEY = "profect-memories-jmxdjl";
-
-  function buildPhotos(prefix, count, seedStart) {
-    const photos = [];
-    for (let i = 0; i < count; i++) {
-      const seed = seedStart + i;
-      photos.push({
-        id: ${prefix}-${i + 1},
-        url: https://picsum.photos/seed/${seed}/800/1000,
-      });
-    }
-    return photos;
-  }
+  const DEFAULT_GALLERY_KEY = "family-shoot";
 
   async function fetchFolderPhotos(folderName) {
     try {
       const response = await fetch(https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/images/galleries/${folderName});
-      if (!response.ok) return null;
+      if (!response.ok) throw new Error(GitHub API returned ${response.status});
       const files = await response.json();
       
-      const imageFiles = files.filter(file => file.name.match(/\.(jpg|jpeg|png|webp)$/i));
+      const imageFiles = files.filter(file => file.name.match(/\.(jpg|jpeg|png|webp|gif)$/i));
       
       return imageFiles.map((file, index) => ({
         id: ${folderName}-${index + 1},
-        url: file.download_url || /${file.path}
+        url: file.download_url || https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/images/galleries/${folderName}/${file.name}
       }));
     } catch (err) {
       console.error("Failed to fetch gallery folder:", err);
@@ -53,32 +28,37 @@
     const params = new URLSearchParams(window.location.search);
     const galleryKey = params.get("id") || params.get("gallery") || DEFAULT_GALLERY_KEY;
 
-    let galleryData = GALLERIES[galleryKey];
-
-    if (!galleryData) {
-      const fetchedPhotos = await fetchFolderPhotos(galleryKey);
-      if (fetchedPhotos && fetchedPhotos.length > 0) {
-        galleryData = {
-          title: galleryKey.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
-          scene: ${fetchedPhotos.length} Frames,
-          photos: fetchedPhotos
-        };
-      } else {
-        galleryData = GALLERIES[DEFAULT_GALLERY_KEY];
-      }
+    const photos = await fetchFolderPhotos(galleryKey);
+    
+    if (photos && photos.length > 0) {
+      const formattedTitle = galleryKey.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+      renderGallery({
+        title: formattedTitle,
+        scene: "Client Session",
+        photos: photos
+      });
+    } else {
+      console.warn("No photos found in folder:", galleryKey);
     }
-
-    renderGallery(galleryData);
   }
 
   function renderGallery(gallery) {
-    const titleEl = document.querySelector("h1, .gallery-title");
-    const countEl = document.querySelector(".frame-count, .gallery-subtitle");
+    // Update Header Text
+    const titleEl = document.querySelector("h1, .gallery-title, #gallery-title");
+    const countEl = document.querySelector(".frame-count, .gallery-subtitle, #gallery-subtitle");
 
     if (titleEl) titleEl.textContent = gallery.title;
-    if (countEl) countEl.textContent = ${gallery.scene || "Gallery"} • ${gallery.photos.length} frames;
+    if (countEl) countEl.textContent = ${gallery.scene} • ${gallery.photos.length} frames;
 
-    console.log("Loaded Gallery:", gallery);
+    // Populate Photos into Grid / Swiper / Container
+    const gridEl = document.querySelector(".gallery-grid, .swiper-wrapper, #photos-container, main");
+    if (gridEl && gallery.photos.length > 0) {
+      gridEl.innerHTML = gallery.photos.map(photo => `
+        <div class="photo-card" style="margin-bottom: 24px;">
+          <img src="${photo.url}" alt="${gallery.title}" style="width: 100%; height: auto; border-radius: 8px; display: block;" loading="lazy" />
+        </div>
+      `).join("");
+    }
   }
 
   document.addEventListener("DOMContentLoaded", loadGallery);
