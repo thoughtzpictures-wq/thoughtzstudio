@@ -5,8 +5,9 @@
   const REPO_NAME = "thoughtzstudio";
   const DEFAULT_GALLERY = "family-shoot";
 
-  // State array to track favorited photo IDs
+  // Tracks favorited photo IDs
   const favoriteIds = new Set();
+  let currentGalleryTitle = "GALLERY";
 
   async function fetchFolderPhotos(folderName) {
     try {
@@ -41,9 +42,9 @@
     const photos = await fetchFolderPhotos(galleryKey);
 
     if (photos && photos.length > 0) {
-      const formattedTitle = galleryKey.replace(/-/g, " ").toUpperCase();
+      currentGalleryTitle = galleryKey.replace(/-/g, " ").toUpperCase();
       renderGallery({
-        title: formattedTitle,
+        title: currentGalleryTitle,
         scene: "Client Session",
         photos: photos
       });
@@ -60,6 +61,42 @@
         el.textContent = labelText;
       }
     });
+  }
+
+  function setupSendFavouritesButton() {
+    const allBtns = document.querySelectorAll("button, a, div");
+    let sendBtn = null;
+
+    allBtns.forEach(function(el) {
+      if (el.textContent.trim().includes("Send Favourites to Studio")) {
+        sendBtn = el;
+      }
+    });
+
+    if (sendBtn) {
+      sendBtn.style.cursor = "pointer";
+      sendBtn.onclick = function(e) {
+        e.preventDefault();
+
+        if (favoriteIds.size === 0) {
+          alert("Please select at least one photo before sending your favorites!");
+          return;
+        }
+
+        const selectedList = Array.from(favoriteIds).join(", ");
+        const message = Hello Thoughtz Studio! 👋\n\nHere are my selected favorite frames for *${currentGalleryTitle}* (${favoriteIds.size} total):\n\n${selectedList};
+
+        // Send via WhatsApp
+        const waUrl = "https://wa.me/?text=" + encodeURIComponent(message);
+        
+        // Copy list to clipboard as backup
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(message);
+        }
+
+        window.open(waUrl, "_blank");
+      };
+    }
   }
 
   function renderGallery(gallery) {
@@ -181,6 +218,7 @@
     });
 
     updateFavoritesCounter();
+    setupSendFavouritesButton();
   }
 
   document.addEventListener("DOMContentLoaded", loadGallery);
