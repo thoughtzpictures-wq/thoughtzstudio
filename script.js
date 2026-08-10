@@ -49,52 +49,42 @@
 
   function renderGallery(gallery) {
     const count = gallery.photos.length;
+    const formattedTotal = count < 10 ? "0" + count : count;
 
-    // 1. Update Title
-    const titleEls = document.querySelectorAll("h1, .gallery-title, #gallery-title");
-    titleEls.forEach(function(el) {
-      el.textContent = gallery.title;
-    });
-
-    // 2. Update Subtitles & Initial Counter
-    const allText = document.querySelectorAll("p, span, div");
-    allText.forEach(function(el) {
-      if (el.children.length === 0) {
-        if (el.textContent.includes("12 frames") || el.textContent.includes("Scene •") || el.textContent.includes("frames")) {
-          el.textContent = gallery.scene + " • " + count + " frames";
-        }
-        if (el.textContent.includes("01 /") || el.textContent.includes("01/")) {
-          el.textContent = "01 / " + (count < 10 ? "0" + count : count);
-        }
+    // 1. Target Title (H1)
+    const titleEl = document.querySelector("h1");
+    if (titleEl) {
+      titleEl.textContent = gallery.title;
+      // Target Subtitle immediately under H1
+      if (titleEl.nextElementSibling) {
+        titleEl.nextElementSibling.textContent = gallery.scene + " • " + count + " frames";
       }
-    });
+    }
 
-    // 3. Inject Images & Re-initialize Slider
-    const wrapper = document.querySelector(".swiper-wrapper, .slides-wrapper, #photos-container");
-    const swiperEl = document.querySelector(".swiper, .swiper-container") || document.querySelector("[class*='swiper']");
+    // 2. Target Top Right Counter Badge (01 / 100)
+    const badge = document.querySelector("[class*='counter']") || document.querySelector(".badge");
+    if (badge) {
+      badge.textContent = "01 / " + formattedTotal;
+    }
 
+    // 3. Inject Photos into Swiper
+    const wrapper = document.querySelector(".swiper-wrapper");
     if (wrapper) {
-      // Safely destroy previous slider instance if active
-      if (swiperEl && swiperEl.swiper) {
-        try {
-          swiperEl.swiper.destroy(true, true);
-        } catch (e) {
-          console.log("Swiper reset:", e);
-        }
-      }
-
-      // Populate photo slides
       let html = "";
       for (let i = 0; i < gallery.photos.length; i++) {
         html += '<div class="swiper-slide" style="display:flex; justify-content:center; align-items:center;">';
-        html += '<img src="' + gallery.photos[i].url + '" alt="' + gallery.title + '" style="max-width:100%; height:auto; max-height:70vh; object-fit:contain; border-radius:12px; display:block;" loading="lazy" />';
+        html += '<img src="' + gallery.photos[i].url + '" alt="' + gallery.title + ' - Frame ' + (i + 1) + '" style="max-width:100%; height:auto; max-height:65vh; object-fit:contain; border-radius:12px; display:block;" loading="lazy" />';
         html += '</div>';
       }
       wrapper.innerHTML = html;
 
-      // Re-init Swiper slider
-      if (window.Swiper) {
-        new window.Swiper(swiperEl || ".swiper", {
+      // Re-initialize Swiper Slider
+      const swiperContainer = document.querySelector(".swiper") || document.querySelector(".swiper-container");
+      if (swiperContainer && swiperContainer.swiper) {
+        swiperContainer.swiper.update();
+        swiperContainer.swiper.slideTo(0);
+      } else if (window.Swiper && swiperContainer) {
+        new window.Swiper(swiperContainer, {
           loop: false,
           observer: true,
           observeParents: true,
@@ -104,13 +94,9 @@
             slideChange: function () {
               const currentIdx = this.realIndex + 1;
               const formattedCurrent = currentIdx < 10 ? "0" + currentIdx : currentIdx;
-              const formattedTotal = count < 10 ? "0" + count : count;
-
-              allText.forEach(function(el) {
-                if (el.children.length === 0 && el.textContent.match(/\d+\s*\/\s*\d+/)) {
-                  el.textContent = formattedCurrent + " / " + formattedTotal;
-                }
-              });
+              if (badge) {
+                badge.textContent = formattedCurrent + " / " + formattedTotal;
+              }
             }
           }
         });
