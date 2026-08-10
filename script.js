@@ -50,39 +50,71 @@
   function renderGallery(gallery) {
     const count = gallery.photos.length;
 
-    // 1. Update Gallery Title
+    // 1. Update Title
     const titleEls = document.querySelectorAll("h1, .gallery-title, #gallery-title");
     titleEls.forEach(function(el) {
       el.textContent = gallery.title;
     });
 
-    // 2. Update Frame Counts & Subtitles
+    // 2. Update Subtitles & Initial Counter
     const allText = document.querySelectorAll("p, span, div");
     allText.forEach(function(el) {
       if (el.children.length === 0) {
-        if (el.textContent.includes("12 frames") || el.textContent.includes("Scene •")) {
+        if (el.textContent.includes("12 frames") || el.textContent.includes("Scene •") || el.textContent.includes("frames")) {
           el.textContent = gallery.scene + " • " + count + " frames";
         }
-        if (el.textContent.includes("01 / 12") || el.textContent.includes("01/12")) {
-          el.textContent = "01 / " + count;
+        if (el.textContent.includes("01 /") || el.textContent.includes("01/")) {
+          el.textContent = "01 / " + (count < 10 ? "0" + count : count);
         }
       }
     });
 
-    // 3. Inject Images into Swiper Slider
+    // 3. Inject Images & Re-initialize Slider
     const wrapper = document.querySelector(".swiper-wrapper, .slides-wrapper, #photos-container");
+    const swiperEl = document.querySelector(".swiper, .swiper-container") || document.querySelector("[class*='swiper']");
+
     if (wrapper) {
+      // Safely destroy previous slider instance if active
+      if (swiperEl && swiperEl.swiper) {
+        try {
+          swiperEl.swiper.destroy(true, true);
+        } catch (e) {
+          console.log("Swiper reset:", e);
+        }
+      }
+
+      // Populate photo slides
       let html = "";
       for (let i = 0; i < gallery.photos.length; i++) {
-        html += '<div class="swiper-slide">';
-        html += '<img src="' + gallery.photos[i].url + '" alt="' + gallery.title + '" style="width:100%; border-radius:12px;" loading="lazy" />';
+        html += '<div class="swiper-slide" style="display:flex; justify-content:center; align-items:center;">';
+        html += '<img src="' + gallery.photos[i].url + '" alt="' + gallery.title + '" style="max-width:100%; height:auto; max-height:70vh; object-fit:contain; border-radius:12px; display:block;" loading="lazy" />';
         html += '</div>';
       }
       wrapper.innerHTML = html;
-    }
 
-    if (window.swiper && typeof window.swiper.update === "function") {
-      window.swiper.update();
+      // Re-init Swiper slider
+      if (window.Swiper) {
+        new window.Swiper(swiperEl || ".swiper", {
+          loop: false,
+          observer: true,
+          observeParents: true,
+          pagination: { el: ".swiper-pagination", clickable: true },
+          navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
+          on: {
+            slideChange: function () {
+              const currentIdx = this.realIndex + 1;
+              const formattedCurrent = currentIdx < 10 ? "0" + currentIdx : currentIdx;
+              const formattedTotal = count < 10 ? "0" + count : count;
+
+              allText.forEach(function(el) {
+                if (el.children.length === 0 && el.textContent.match(/\d+\s*\/\s*\d+/)) {
+                  el.textContent = formattedCurrent + " / " + formattedTotal;
+                }
+              });
+            }
+          }
+        });
+      }
     }
   }
 
