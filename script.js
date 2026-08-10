@@ -51,40 +51,49 @@
     const count = gallery.photos.length;
     const formattedTotal = count < 10 ? "0" + count : count;
 
-    // 1. Target Title (H1)
+    // 1. Update Title and Subtitle
     const titleEl = document.querySelector("h1");
     if (titleEl) {
       titleEl.textContent = gallery.title;
-      // Target Subtitle immediately under H1
       if (titleEl.nextElementSibling) {
         titleEl.nextElementSibling.textContent = gallery.scene + " • " + count + " frames";
       }
     }
 
-    // 2. Target Top Right Counter Badge (01 / 100)
+    // 2. Update Badge Counter
     const badge = document.querySelector("[class*='counter']") || document.querySelector(".badge");
     if (badge) {
       badge.textContent = "01 / " + formattedTotal;
     }
 
-    // 3. Inject Photos into Swiper
-    const wrapper = document.querySelector(".swiper-wrapper");
+    // 3. Locate Swiper Container & Wrapper
+    const swiperContainer = document.querySelector(".swiper, .swiper-container") || document.querySelector("[class*='swiper']");
+    const wrapper = document.querySelector(".swiper-wrapper, .slides-wrapper");
+
+    if (swiperContainer) {
+      swiperContainer.style.minHeight = "380px";
+      swiperContainer.style.width = "100%";
+      swiperContainer.style.display = "block";
+    }
+
     if (wrapper) {
+      // Build slides with minimum dimensions so photos never collapse
       let html = "";
       for (let i = 0; i < gallery.photos.length; i++) {
-        html += '<div class="swiper-slide" style="display:flex; justify-content:center; align-items:center;">';
-        html += '<img src="' + gallery.photos[i].url + '" alt="' + gallery.title + ' - Frame ' + (i + 1) + '" style="max-width:100%; height:auto; max-height:65vh; object-fit:contain; border-radius:12px; display:block;" loading="lazy" />';
+        html += '<div class="swiper-slide" style="display:flex; justify-content:center; align-items:center; min-height:350px; width:100%;">';
+        html += '<img src="' + gallery.photos[i].url + '" alt="' + gallery.title + ' - Frame ' + (i + 1) + '" style="max-width:100%; max-height:65vh; width:auto; height:auto; object-fit:contain; border-radius:12px; display:block;" loading="lazy" />';
         html += '</div>';
       }
       wrapper.innerHTML = html;
 
-      // Re-initialize Swiper Slider
-      const swiperContainer = document.querySelector(".swiper") || document.querySelector(".swiper-container");
+      // Initialize or update Swiper
       if (swiperContainer && swiperContainer.swiper) {
         swiperContainer.swiper.update();
         swiperContainer.swiper.slideTo(0);
       } else if (window.Swiper && swiperContainer) {
-        new window.Swiper(swiperContainer, {
+        const sliderInstance = new window.Swiper(swiperContainer, {
+          slidesPerView: 1,
+          spaceBetween: 16,
           loop: false,
           observer: true,
           observeParents: true,
@@ -100,6 +109,10 @@
             }
           }
         });
+
+        setTimeout(function() {
+          sliderInstance.update();
+        }, 200);
       }
     }
   }
