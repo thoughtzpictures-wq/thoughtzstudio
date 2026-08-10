@@ -2,8 +2,8 @@ backend:
   name: git-gateway
   branch: main
 
-media_folder: "images/uploads"
-public_folder: "/images/uploads"
+media_folder: "images/galleries"
+public_folder: "/images/galleries"
 
 collections:
   - name: "galleries"
@@ -11,14 +11,8 @@ collections:
     folder: "content/galleries"
     create: true
     slug: "{{slug}}"
-    format: "json"
     fields:
-      - { label: "Project Slug / URL ID", name: "id", widget: "string", hint: "e.g., profect-memories-jmxdjl" }
+      - { label: "Project Slug / URL ID", name: "slug", widget: "string" }
       - { label: "Client / Project Title", name: "title", widget: "string" }
-      - { label: "Scene Name", name: "scene", widget: "string", default: "Scene 01" }
-      - label: "Photos"
-        name: "photos"
-        widget: "list"
-        fields:
-          - { label: "Photo ID", name: "id", widget: "string" }
-          - { label: "Photo File", name: "url", widget: "image" }
+      - { label: "Scene Name", name: "scene", widget: "string" }
+      - { label: "Gallery Folder Name", name: "folder", widget: "string", help: "Type the exact folder name created inside images/galleries (e.g., family-shoot)" }
