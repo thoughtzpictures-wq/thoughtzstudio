@@ -5,6 +5,9 @@
   const REPO_NAME = "thoughtzstudio";
   const DEFAULT_GALLERY = "family-shoot";
 
+  // Option: Add your WhatsApp phone number here with country code (e.g., "2348012345678")
+  const STUDIO_PHONE = "2347065686921"; 
+
   const favoriteIds = new Set();
   let currentGalleryTitle = "FAMILY SHOOT";
 
@@ -81,32 +84,57 @@
     });
   }
 
-  // Universal click handler specifically designed to bypass Safari popup blockers
+  function handleSendFavourites(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    if (favoriteIds.size === 0) {
+      alert("Please select at least one photo before sending your favorites!");
+      return;
+    }
+
+    const selectedList = Array.from(favoriteIds).join(", ");
+    const message = "Hello Thoughtz Studio! 👋\n\nHere are my selected favorite frames for " + currentGalleryTitle + " (" + favoriteIds.size + " total):\n\n" + selectedList;
+
+    // Copy list to clipboard
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(message);
+    }
+
+    // Build standard WhatsApp Web / Mobile URL
+    let waUrl = "https://api.whatsapp.com/send?";
+    if (STUDIO_PHONE && STUDIO_PHONE.length > 0) {
+      waUrl += "phone=" + STUDIO_PHONE + "&";
+    }
+    waUrl += "text=" + encodeURIComponent(message);
+
+    // Provide visual feedback before redirecting
+    alert("Opening WhatsApp to send " + favoriteIds.size + " selected frame(s) to Thoughtz Studio!");
+    window.location.href = waUrl;
+  }
+
+  // Attach directly to any element containing the button text
+  function bindSendButtonDirectly() {
+    const allEls = document.querySelectorAll("*");
+    allEls.forEach(function(el) {
+      if (el.children.length === 0 && el.textContent.trim().toLowerCase().includes("send favourites to studio")) {
+        const targetBtn = el.closest("button, a, div, [role='button']") || el;
+        targetBtn.style.cursor = "pointer";
+        targetBtn.onclick = handleSendFavourites;
+      }
+    });
+  }
+
+  // Fallback global click delegate
   document.addEventListener("click", function(e) {
     const el = e.target.closest("button, a, div, span, p");
     if (!el) return;
 
     const text = (el.textContent || "").toLowerCase().trim();
     if (text.includes("send favourites") || text.includes("send favorites")) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (favoriteIds.size === 0) {
-        alert("Please select at least one photo before sending your favorites!");
-        return;
-      }
-
-      const selectedList = Array.from(favoriteIds).join(", ");
-      const message = "Hello Thoughtz Studio! 👋\n\nHere are my selected favorite frames for " + currentGalleryTitle + " (" + favoriteIds.size + " total):\n\n" + selectedList;
-
-      const waUrl = "https://wa.me/?text=" + encodeURIComponent(message);
-      
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(message);
-      }
-
-      // Direct location change bypasses Safari popup blockers 100% of the time
-      window.location.href = waUrl;
+      handleSendFavourites(e);
     }
   });
 
@@ -218,6 +246,7 @@
     });
 
     updateFavoritesCounter();
+    bindSendButtonDirectly();
   }
 
   if (document.readyState === "complete" || document.readyState === "interactive") {
