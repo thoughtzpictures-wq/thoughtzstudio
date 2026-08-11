@@ -107,30 +107,28 @@
     window.location.assign(waUrl);
   }
 
-  // Smart download for selected images (opens clean direct tabs)
   function triggerDownloadSelected() {
     if (favoriteIds.size === 0) {
-      alert("Please favorite at least one photo first by tapping the heart icon on your favorite images!");
+      alert("Please favorite at least one photo first by clicking the heart icon on your favorite images!");
       return;
     }
 
     const selectedPhotos = loadedPhotos.filter(p => favoriteIds.has(p.id));
 
-    alert("Opening " + selectedPhotos.length + " selected photo(s) for high-resolution download.");
+    alert("Opening " + selectedPhotos.length + " selected photo(s) in high resolution.");
 
     selectedPhotos.forEach(function(photo) {
       window.open(photo.url, "_blank");
     });
   }
 
-  // Re-bind template buttons and replace "Download All" with "Download Selected"
   function setupActionButtons() {
     const allBtns = document.querySelectorAll("button, a, div");
 
     allBtns.forEach(function(el) {
       const text = (el.textContent || "").toLowerCase().trim();
 
-      // WhatsApp Button
+      // Send to Studio
       if (text.includes("send favourites") || text.includes("send favorites")) {
         const btn = el.closest("button, a, div") || el;
         btn.onclick = function(e) {
@@ -140,11 +138,11 @@
         };
       }
 
-      // Replace Download All functionality with Download Selected
-      if (text.includes("download all") || text.includes("download frames")) {
+      // Download Selected
+      if (text.includes("download all") || text.includes("download frames") || text.includes("download selected")) {
         const btn = el.closest("button, a, div") || el;
         
-        // Update label text dynamically so client knows it downloads selected frames
+        // Relabel button text
         if (btn.children.length === 0) {
           btn.textContent = "Download Selected Frames";
         } else {
@@ -203,9 +201,13 @@
       }
     }
 
+    // Hide template swipers entirely so their legacy event listeners don't run
     const oldSwipers = document.querySelectorAll(".swiper, .swiper-container");
     oldSwipers.forEach(function(el) {
-      if (el !== galleryContainer) el.style.display = "none";
+      if (el !== galleryContainer) {
+        el.style.display = "none";
+        el.onclick = null; // Kill template clicks
+      }
     });
 
     galleryContainer.style.width = "100%";
@@ -227,7 +229,8 @@
       
       html += '<img src="' + photo.url + '" alt="' + gallery.title + ' - Frame ' + (i + 1) + '" style="width: 100%; max-height: 60vh; object-fit: contain; border-radius: 16px; display: block; margin: 0 auto;" loading="lazy" />';
       
-      html += '<button type="button" data-photo-id="' + photo.id + '" class="fav-btn" style="position: absolute; top: 14px; right: 14px; background: ' + (isFav ? '#22c55e' : 'rgba(0,0,0,0.65)') + '; color: #ffffff; border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); display: flex; align-items: center; gap: 6px; z-index: 99; transition: all 0.2s ease;">';
+      // Favorite Button with inline click interception
+      html += '<button type="button" data-photo-id="' + photo.id + '" class="fav-btn" onclick="event.preventDefault(); event.stopPropagation();" style="position: absolute; top: 14px; right: 14px; background: ' + (isFav ? '#22c55e' : 'rgba(0,0,0,0.65)') + '; color: #ffffff; border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); display: flex; align-items: center; gap: 6px; z-index: 999; transition: all 0.2s ease;">';
       html += '<span class="fav-icon">' + (isFav ? '♥' : '♡') + '</span> ';
       html += '<span class="fav-label">' + (isFav ? 'Favorited' : 'Favorite') + '</span>';
       html += '</button>';
@@ -237,33 +240,34 @@
     }
     galleryContainer.innerHTML = html;
 
-    // Strict favoriting handler that suppresses all default template listeners
-    galleryContainer.addEventListener("click", function(e) {
-      const btn = e.target.closest(".fav-btn");
-      if (!btn) return;
+    // Attach listener directly to each favorite button to block event bubbling
+    const favButtons = galleryContainer.querySelectorAll(".fav-btn");
+    favButtons.forEach(btn => {
+      btn.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
 
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+        const photoId = this.getAttribute("data-photo-id");
+        const iconEl = this.querySelector(".fav-icon");
+        const labelEl = this.querySelector(".fav-label");
 
-      const photoId = btn.getAttribute("data-photo-id");
-      const iconEl = btn.querySelector(".fav-icon");
-      const labelEl = btn.querySelector(".fav-label");
+        if (favoriteIds.has(photoId)) {
+          favoriteIds.delete(photoId);
+          this.style.background = "rgba(0,0,0,0.65)";
+          if (iconEl) iconEl.textContent = "♡";
+          if (labelEl) labelEl.textContent = "Favorite";
+        } else {
+          favoriteIds.add(photoId);
+          this.style.background = "#22c55e";
+          if (iconEl) iconEl.textContent = "♥";
+          if (labelEl) labelEl.textContent = "Favorited";
+        }
 
-      if (favoriteIds.has(photoId)) {
-        favoriteIds.delete(photoId);
-        btn.style.background = "rgba(0,0,0,0.65)";
-        if (iconEl) iconEl.textContent = "♡";
-        if (labelEl) labelEl.textContent = "Favorite";
-      } else {
-        favoriteIds.add(photoId);
-        btn.style.background = "#22c55e";
-        if (iconEl) iconEl.textContent = "♥";
-        if (labelEl) labelEl.textContent = "Favorited";
-      }
-
-      updateFavoritesCounter();
-    }, true);
+        updateFavoritesCounter();
+        return false;
+      }, true);
+    });
 
     galleryContainer.addEventListener("scroll", function() {
       const scrollPos = galleryContainer.scrollLeft;
