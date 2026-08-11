@@ -4,9 +4,7 @@
   const REPO_OWNER = "thoughtzpictures-wq";
   const REPO_NAME = "thoughtzstudio";
   const DEFAULT_GALLERY = "family-shoot";
-
-  // Optional: Enter your WhatsApp number with country code (e.g., "2348012345678")
-  const STUDIO_PHONE = ""; 
+  const STUDIO_PHONE = "2347065686921"; 
 
   const favoriteIds = new Set();
   let currentGalleryTitle = "FAMILY SHOOT";
@@ -109,56 +107,32 @@
     window.location.assign(waUrl);
   }
 
-  // Fixed single-image prompt download to avoid Safari popup blocking
-  async function downloadImageBlob(url, filename) {
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch (e) {
-      window.open(url, "_blank");
-    }
-  }
-
-  function triggerDownloadAll() {
-    if (!loadedPhotos || loadedPhotos.length === 0) {
-      alert("No images available to download.");
+  // Smart download for selected images (opens clean direct tabs)
+  function triggerDownloadSelected() {
+    if (favoriteIds.size === 0) {
+      alert("Please favorite at least one photo first by tapping the heart icon on your favorite images!");
       return;
     }
 
-    const confirmDownload = confirm("Ready to download all " + loadedPhotos.length + " photos? Safari will open them in separate tabs if automatic downloads are blocked.");
-    if (!confirmDownload) return;
+    const selectedPhotos = loadedPhotos.filter(p => favoriteIds.has(p.id));
 
-    loadedPhotos.forEach(function(photo, index) {
-      setTimeout(function() {
-        downloadImageBlob(photo.url, photo.name || ("frame-" + (index + 1) + ".jpg"));
-      }, index * 600); // Increased delay to keep Safari from treating it as spam
+    alert("Opening " + selectedPhotos.length + " selected photo(s) for high-resolution download.");
+
+    selectedPhotos.forEach(function(photo) {
+      window.open(photo.url, "_blank");
     });
   }
 
-  // Targeted button binding (no overlap with favorite buttons)
-  function bindActionButtons() {
-    const buttons = document.querySelectorAll("button, a, div[role='button']");
+  // Re-bind template buttons and replace "Download All" with "Download Selected"
+  function setupActionButtons() {
+    const allBtns = document.querySelectorAll("button, a, div");
 
-    buttons.forEach(function(btn) {
-      // Ignore favorite buttons explicitly
-      if (btn.classList.contains("fav-btn") || btn.closest("#studio-carousel")) {
-        return;
-      }
+    allBtns.forEach(function(el) {
+      const text = (el.textContent || "").toLowerCase().trim();
 
-      const text = (btn.textContent || "").toLowerCase().trim();
-
+      // WhatsApp Button
       if (text.includes("send favourites") || text.includes("send favorites")) {
-        btn.removeAttribute("disabled");
-        btn.style.pointerEvents = "auto";
-        btn.style.cursor = "pointer";
+        const btn = el.closest("button, a, div") || el;
         btn.onclick = function(e) {
           e.preventDefault();
           e.stopPropagation();
@@ -166,14 +140,26 @@
         };
       }
 
+      // Replace Download All functionality with Download Selected
       if (text.includes("download all") || text.includes("download frames")) {
-        btn.removeAttribute("disabled");
-        btn.style.pointerEvents = "auto";
-        btn.style.cursor = "pointer";
+        const btn = el.closest("button, a, div") || el;
+        
+        // Update label text dynamically so client knows it downloads selected frames
+        if (btn.children.length === 0) {
+          btn.textContent = "Download Selected Frames";
+        } else {
+          const textNodes = btn.querySelectorAll("*");
+          textNodes.forEach(tn => {
+            if (tn.textContent.toLowerCase().includes("download")) {
+              tn.textContent = "Download Selected Frames";
+            }
+          });
+        }
+
         btn.onclick = function(e) {
           e.preventDefault();
           e.stopPropagation();
-          triggerDownloadAll();
+          triggerDownloadSelected();
         };
       }
     });
@@ -241,7 +227,7 @@
       
       html += '<img src="' + photo.url + '" alt="' + gallery.title + ' - Frame ' + (i + 1) + '" style="width: 100%; max-height: 60vh; object-fit: contain; border-radius: 16px; display: block; margin: 0 auto;" loading="lazy" />';
       
-      html += '<button data-photo-id="' + photo.id + '" class="fav-btn" style="position: absolute; top: 14px; right: 14px; background: ' + (isFav ? '#22c55e' : 'rgba(0,0,0,0.65)') + '; color: #ffffff; border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); display: flex; align-items: center; gap: 6px; z-index: 10; transition: all 0.2s ease;">';
+      html += '<button type="button" data-photo-id="' + photo.id + '" class="fav-btn" style="position: absolute; top: 14px; right: 14px; background: ' + (isFav ? '#22c55e' : 'rgba(0,0,0,0.65)') + '; color: #ffffff; border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); display: flex; align-items: center; gap: 6px; z-index: 99; transition: all 0.2s ease;">';
       html += '<span class="fav-icon">' + (isFav ? '♥' : '♡') + '</span> ';
       html += '<span class="fav-label">' + (isFav ? 'Favorited' : 'Favorite') + '</span>';
       html += '</button>';
@@ -251,11 +237,14 @@
     }
     galleryContainer.innerHTML = html;
 
-    // Favoriting logic strictly isolated to .fav-btn clicks
-    galleryContainer.onclick = function(e) {
-      e.stopPropagation();
+    // Strict favoriting handler that suppresses all default template listeners
+    galleryContainer.addEventListener("click", function(e) {
       const btn = e.target.closest(".fav-btn");
       if (!btn) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
 
       const photoId = btn.getAttribute("data-photo-id");
       const iconEl = btn.querySelector(".fav-icon");
@@ -274,7 +263,7 @@
       }
 
       updateFavoritesCounter();
-    };
+    }, true);
 
     galleryContainer.addEventListener("scroll", function() {
       const scrollPos = galleryContainer.scrollLeft;
@@ -289,7 +278,7 @@
     });
 
     updateFavoritesCounter();
-    bindActionButtons();
+    setupActionButtons();
   }
 
   if (document.readyState === "complete" || document.readyState === "interactive") {
