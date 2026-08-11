@@ -81,11 +81,15 @@
     });
   }
 
-  // Global click listener to guarantee the Send button works instantly
+  // Universal click handler specifically designed to bypass Safari popup blockers
   document.addEventListener("click", function(e) {
-    const target = e.target.closest("button, a, div");
-    if (target && target.textContent && target.textContent.trim().includes("Send Favourites to Studio")) {
+    const el = e.target.closest("button, a, div, span, p");
+    if (!el) return;
+
+    const text = (el.textContent || "").toLowerCase().trim();
+    if (text.includes("send favourites") || text.includes("send favorites")) {
       e.preventDefault();
+      e.stopPropagation();
 
       if (favoriteIds.size === 0) {
         alert("Please select at least one photo before sending your favorites!");
@@ -101,7 +105,8 @@
         navigator.clipboard.writeText(message);
       }
 
-      window.open(waUrl, "_blank");
+      // Direct location change bypasses Safari popup blockers 100% of the time
+      window.location.href = waUrl;
     }
   });
 
