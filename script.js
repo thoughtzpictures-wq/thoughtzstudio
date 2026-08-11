@@ -4,7 +4,7 @@
   const REPO_OWNER = "thoughtzpictures-wq";
   const REPO_NAME = "thoughtzstudio";
   const DEFAULT_GALLERY = "family-shoot";
-  const STUDIO_PHONE = "2347065686921"; 
+  const STUDIO_PHONE = ""; 
 
   const favoriteIds = new Set();
   let currentGalleryTitle = "FAMILY SHOOT";
@@ -128,7 +128,6 @@
     allBtns.forEach(function(el) {
       const text = (el.textContent || "").toLowerCase().trim();
 
-      // Send to Studio
       if (text.includes("send favourites") || text.includes("send favorites")) {
         const btn = el.closest("button, a, div") || el;
         btn.onclick = function(e) {
@@ -138,11 +137,9 @@
         };
       }
 
-      // Download Selected
       if (text.includes("download all") || text.includes("download frames") || text.includes("download selected")) {
         const btn = el.closest("button, a, div") || el;
         
-        // Relabel button text
         if (btn.children.length === 0) {
           btn.textContent = "Download Selected Frames";
         } else {
@@ -201,12 +198,10 @@
       }
     }
 
-    // Hide template swipers entirely so their legacy event listeners don't run
     const oldSwipers = document.querySelectorAll(".swiper, .swiper-container");
     oldSwipers.forEach(function(el) {
       if (el !== galleryContainer) {
-        el.style.display = "none";
-        el.onclick = null; // Kill template clicks
+        if (el.parentNode) el.parentNode.removeChild(el);
       }
     });
 
@@ -229,8 +224,7 @@
       
       html += '<img src="' + photo.url + '" alt="' + gallery.title + ' - Frame ' + (i + 1) + '" style="width: 100%; max-height: 60vh; object-fit: contain; border-radius: 16px; display: block; margin: 0 auto;" loading="lazy" />';
       
-      // Favorite Button with inline click interception
-      html += '<button type="button" data-photo-id="' + photo.id + '" class="fav-btn" onclick="event.preventDefault(); event.stopPropagation();" style="position: absolute; top: 14px; right: 14px; background: ' + (isFav ? '#22c55e' : 'rgba(0,0,0,0.65)') + '; color: #ffffff; border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); display: flex; align-items: center; gap: 6px; z-index: 999; transition: all 0.2s ease;">';
+      html += '<button type="button" data-photo-id="' + photo.id + '" class="fav-btn" style="position: absolute; top: 14px; right: 14px; background: ' + (isFav ? '#22c55e' : 'rgba(0,0,0,0.65)') + '; color: #ffffff; border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); display: flex; align-items: center; gap: 6px; z-index: 999; transition: all 0.2s ease;">';
       html += '<span class="fav-icon">' + (isFav ? '♥' : '♡') + '</span> ';
       html += '<span class="fav-label">' + (isFav ? 'Favorited' : 'Favorite') + '</span>';
       html += '</button>';
@@ -240,13 +234,11 @@
     }
     galleryContainer.innerHTML = html;
 
-    // Attach listener directly to each favorite button to block event bubbling
     const favButtons = galleryContainer.querySelectorAll(".fav-btn");
     favButtons.forEach(btn => {
-      btn.addEventListener("click", function(e) {
+      btn.onclick = function(e) {
         e.preventDefault();
         e.stopPropagation();
-        e.stopImmediatePropagation();
 
         const photoId = this.getAttribute("data-photo-id");
         const iconEl = this.querySelector(".fav-icon");
@@ -266,7 +258,7 @@
 
         updateFavoritesCounter();
         return false;
-      }, true);
+      };
     });
 
     galleryContainer.addEventListener("scroll", function() {
