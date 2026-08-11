@@ -5,11 +5,12 @@
   const REPO_NAME = "thoughtzstudio";
   const DEFAULT_GALLERY = "family-shoot";
 
-  // Option: Add your WhatsApp phone number here with country code (e.g., "2348012345678")
-  const STUDIO_PHONE = "2347065686921"; 
+  // Optional: Enter your WhatsApp number with country code (e.g., "2348012345678")
+  const STUDIO_PHONE = ""; 
 
   const favoriteIds = new Set();
   let currentGalleryTitle = "FAMILY SHOOT";
+  let loadedPhotos = [];
 
   async function fetchFolderPhotos(folderName) {
     const rawBaseUrl = "https://raw.githubusercontent.com/" + REPO_OWNER + "/" + REPO_NAME + "/main/images/galleries/" + folderName;
@@ -28,7 +29,8 @@
             return imageFiles.map(function(file, idx) {
               return {
                 id: folderName + "-" + (idx + 1),
-                url: file.download_url || (rawBaseUrl + "/" + file.name)
+                url: file.download_url || (rawBaseUrl + "/" + file.name),
+                name: file.name || ("frame-" + (idx + 1) + ".jpg")
               };
             });
           }
@@ -43,7 +45,8 @@
     for (var i = 1; i <= count; i++) {
       fallbackPhotos.push({
         id: folderName + "-" + i,
-        url: rawBaseUrl + "/" + i + ".jpg"
+        url: rawBaseUrl + "/" + i + ".jpg",
+        name: "frame-" + i + ".jpg"
       });
     }
     return fallbackPhotos;
@@ -56,12 +59,12 @@
     currentGalleryTitle = galleryKey.replace(/-/g, " ").toUpperCase();
     updatePageHeader(currentGalleryTitle);
 
-    const photos = await fetchFolderPhotos(galleryKey);
+    loadedPhotos = await fetchFolderPhotos(galleryKey);
 
     renderGallery({
       title: currentGalleryTitle,
       scene: "Client Session",
-      photos: photos || []
+      photos: loadedPhotos || []
     });
   }
 
@@ -84,12 +87,8 @@
     });
   }
 
-  function handleSendFavourites(e) {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
+  // Trigger WhatsApp action safely across iOS, Android, and Desktop
+  function triggerWhatsAppSend() {
     if (favoriteIds.size === 0) {
       alert("Please select at least one photo before sending your favorites!");
       return;
@@ -98,45 +97,76 @@
     const selectedList = Array.from(favoriteIds).join(", ");
     const message = "Hello Thoughtz Studio! 👋\n\nHere are my selected favorite frames for " + currentGalleryTitle + " (" + favoriteIds.size + " total):\n\n" + selectedList;
 
-    // Copy list to clipboard
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(message);
     }
 
-    // Build standard WhatsApp Web / Mobile URL
     let waUrl = "https://api.whatsapp.com/send?";
     if (STUDIO_PHONE && STUDIO_PHONE.length > 0) {
       waUrl += "phone=" + STUDIO_PHONE + "&";
     }
     waUrl += "text=" + encodeURIComponent(message);
 
-    // Provide visual feedback before redirecting
-    alert("Opening WhatsApp to send " + favoriteIds.size + " selected frame(s) to Thoughtz Studio!");
-    window.location.href = waUrl;
+    // Bypasses browser blocking
+    window.location.assign(waUrl);
   }
 
-  // Attach directly to any element containing the button text
-  function bindSendButtonDirectly() {
-    const allEls = document.querySelectorAll("*");
-    allEls.forEach(function(el) {
-      if (el.children.length === 0 && el.textContent.trim().toLowerCase().includes("send favourites to studio")) {
-        const targetBtn = el.closest("button, a, div, [role='button']") || el;
-        targetBtn.style.cursor = "pointer";
-        targetBtn.onclick = handleSendFavourites;
-      }
+  // Download all photos sequentially
+  function triggerDownloadAll() {
+    if (!loadedPhotos || loadedPhotos.length === 0) {
+      alert("No images available to download.");
+      return;
+    }
+
+    alert("Starting download for " + loadedPhotos.length + " frames...");
+
+    loadedPhotos.forEach(function(photo, index) {
+      setTimeout(function() {
+        const a = document.createElement("a");
+        a.href = photo.url;
+        a.download = photo.name || ("frame-" + (index + 1) + ".jpg");
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, index * 400); // Stagger downloads slightly to prevent browser blocking
     });
   }
 
-  // Fallback global click delegate
-  document.addEventListener("click", function(e) {
-    const el = e.target.closest("button, a, div, span, p");
-    if (!el) return;
+  // Remove disabled states and bind actions directly to template buttons
+  function bindActionButtons() {
+    const allEls = document.querySelectorAll("button, a, div, span");
 
-    const text = (el.textContent || "").toLowerCase().trim();
-    if (text.includes("send favourites") || text.includes("send favorites")) {
-      handleSendFavourites(e);
-    }
-  });
+    allEls.forEach(function(el) {
+      const text = (el.textContent || "").toLowerCase().trim();
+
+      // Fix "Send Favourites to Studio"
+      if (text.includes("send favourites") || text.includes("send favorites")) {
+        const btn = el.closest("button, a, div") || el;
+        btn.removeAttribute("disabled");
+        btn.style.pointerEvents = "auto";
+        btn.style.cursor = "pointer";
+        btn.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          triggerWhatsAppSend();
+        };
+      }
+
+      // Fix "Download All Frames"
+      if (text.includes("download all") || text.includes("download frames")) {
+        const btn = el.closest("button, a, div") || el;
+        btn.removeAttribute("disabled");
+        btn.style.pointerEvents = "auto";
+        btn.style.cursor = "pointer";
+        btn.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          triggerDownloadAll();
+        };
+      }
+    });
+  }
 
   function renderGallery(gallery) {
     const count = gallery.photos.length;
@@ -246,7 +276,7 @@
     });
 
     updateFavoritesCounter();
-    bindSendButtonDirectly();
+    bindActionButtons();
   }
 
   if (document.readyState === "complete" || document.readyState === "interactive") {
