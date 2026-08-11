@@ -35,7 +35,6 @@
       console.warn("API unavailable, using fallback photo loader", err);
     }
 
-    // Fallback: Generate image links if GitHub API rate-limits
     var fallbackPhotos = [];
     var count = (folderName === "family-shoot") ? 100 : 20;
     for (var i = 1; i <= count; i++) {
@@ -52,8 +51,6 @@
     const galleryKey = params.get("id") || params.get("gallery") || DEFAULT_GALLERY;
 
     currentGalleryTitle = galleryKey.replace(/-/g, " ").toUpperCase();
-
-    // Force instant update to header so "Project Memories" never persists
     updatePageHeader(currentGalleryTitle);
 
     const photos = await fetchFolderPhotos(galleryKey);
@@ -76,53 +73,42 @@
     const count = favoriteIds.size;
     const labelText = count === 1 ? "1 frame selected" : count + " frames selected";
 
-    const allEls = document.querySelectorAll("p, span, div, button");
+    const allEls = document.querySelectorAll("p, span, div, button, small");
     allEls.forEach(function(el) {
-      if (el.children.length === 0 && el.textContent.includes("frames selected")) {
+      if (el.children.length === 0 && (el.textContent.includes("frame selected") || el.textContent.includes("frames selected"))) {
         el.textContent = labelText;
       }
     });
   }
 
-  function setupSendFavouritesButton() {
-    const allBtns = document.querySelectorAll("button, a, div");
-    let sendBtn = null;
+  // Global click listener to guarantee the Send button works instantly
+  document.addEventListener("click", function(e) {
+    const target = e.target.closest("button, a, div");
+    if (target && target.textContent && target.textContent.trim().includes("Send Favourites to Studio")) {
+      e.preventDefault();
 
-    allBtns.forEach(function(el) {
-      if (el.textContent.trim().includes("Send Favourites to Studio")) {
-        sendBtn = el;
+      if (favoriteIds.size === 0) {
+        alert("Please select at least one photo before sending your favorites!");
+        return;
       }
-    });
 
-    if (sendBtn) {
-      sendBtn.style.cursor = "pointer";
-      sendBtn.onclick = function(e) {
-        e.preventDefault();
+      const selectedList = Array.from(favoriteIds).join(", ");
+      const message = "Hello Thoughtz Studio! 👋\n\nHere are my selected favorite frames for " + currentGalleryTitle + " (" + favoriteIds.size + " total):\n\n" + selectedList;
 
-        if (favoriteIds.size === 0) {
-          alert("Please select at least one photo before sending your favorites!");
-          return;
-        }
+      const waUrl = "https://wa.me/?text=" + encodeURIComponent(message);
+      
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(message);
+      }
 
-        const selectedList = Array.from(favoriteIds).join(", ");
-        const message = "Hello Thoughtz Studio! 👋\n\nHere are my selected favorite frames for " + currentGalleryTitle + " (" + favoriteIds.size + " total):\n\n" + selectedList;
-
-        const waUrl = "https://wa.me/?text=" + encodeURIComponent(message);
-        
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(message);
-        }
-
-        window.open(waUrl, "_blank");
-      };
+      window.open(waUrl, "_blank");
     }
-  }
+  });
 
   function renderGallery(gallery) {
     const count = gallery.photos.length;
     const formattedTotal = count < 10 ? "0" + count : count;
 
-    // 1. Update Title and Subtitle
     const titleEl = document.querySelector("h1");
     if (titleEl) {
       titleEl.textContent = gallery.title;
@@ -131,13 +117,11 @@
       }
     }
 
-    // 2. Update Badge Counter
     const badge = document.querySelector("[class*='counter']") || document.querySelector(".badge");
     if (badge) {
       badge.textContent = "01 / " + formattedTotal;
     }
 
-    // 3. Locate "SWIPE TO VIEW FRAMES" label
     let swipeHintEl = null;
     const allEls = document.querySelectorAll("p, span, div, h2, h3");
     for (let i = 0; i < allEls.length; i++) {
@@ -147,7 +131,6 @@
       }
     }
 
-    // 4. Create carousel container
     let galleryContainer = document.getElementById("studio-carousel");
     if (!galleryContainer) {
       galleryContainer = document.createElement("div");
@@ -160,13 +143,11 @@
       }
     }
 
-    // Hide broken swipers if present
     const oldSwipers = document.querySelectorAll(".swiper, .swiper-container");
     oldSwipers.forEach(function(el) {
       if (el !== galleryContainer) el.style.display = "none";
     });
 
-    // Native snap-scroll styles
     galleryContainer.style.width = "100%";
     galleryContainer.style.margin = "20px 0";
     galleryContainer.style.display = "flex";
@@ -176,7 +157,6 @@
     galleryContainer.style.gap = "16px";
     galleryContainer.style.padding = "8px 0";
 
-    // Build slides with Favorite Overlay Button
     let html = "";
     for (let i = 0; i < gallery.photos.length; i++) {
       const photo = gallery.photos[i];
@@ -185,10 +165,8 @@
       html += '<div style="flex: 0 0 100%; max-width: 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center;">';
       html += '<div style="position: relative; display: inline-block; width: 100%; max-width: 100%; text-align: center;">';
       
-      // Photo Image
       html += '<img src="' + photo.url + '" alt="' + gallery.title + ' - Frame ' + (i + 1) + '" style="width: 100%; max-height: 60vh; object-fit: contain; border-radius: 16px; display: block; margin: 0 auto;" loading="lazy" />';
       
-      // Favorite Button
       html += '<button data-photo-id="' + photo.id + '" class="fav-btn" style="position: absolute; top: 14px; right: 14px; background: ' + (isFav ? '#22c55e' : 'rgba(0,0,0,0.65)') + '; color: #ffffff; border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); display: flex; align-items: center; gap: 6px; z-index: 10; transition: all 0.2s ease;">';
       html += '<span class="fav-icon">' + (isFav ? '♥' : '♡') + '</span> ';
       html += '<span class="fav-label">' + (isFav ? 'Favorited' : 'Favorite') + '</span>';
@@ -199,7 +177,6 @@
     }
     galleryContainer.innerHTML = html;
 
-    // Handle favorite button clicks
     galleryContainer.onclick = function(e) {
       const btn = e.target.closest(".fav-btn");
       if (!btn) return;
@@ -223,7 +200,6 @@
       updateFavoritesCounter();
     };
 
-    // Update index counter badge on scroll
     galleryContainer.addEventListener("scroll", function() {
       const scrollPos = galleryContainer.scrollLeft;
       const width = galleryContainer.clientWidth;
@@ -237,10 +213,8 @@
     });
 
     updateFavoritesCounter();
-    setupSendFavouritesButton();
   }
 
-  // Handle immediate execution if DOM is already ready
   if (document.readyState === "complete" || document.readyState === "interactive") {
     setTimeout(loadGallery, 1);
   } else {
