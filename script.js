@@ -87,7 +87,6 @@
     });
   }
 
-  // Trigger WhatsApp action safely across iOS, Android, and Desktop
   function triggerWhatsAppSend() {
     if (favoriteIds.size === 0) {
       alert("Please select at least one photo before sending your favorites!");
@@ -107,42 +106,56 @@
     }
     waUrl += "text=" + encodeURIComponent(message);
 
-    // Bypasses browser blocking
     window.location.assign(waUrl);
   }
 
-  // Download all photos sequentially
+  // Fixed single-image prompt download to avoid Safari popup blocking
+  async function downloadImageBlob(url, filename) {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      window.open(url, "_blank");
+    }
+  }
+
   function triggerDownloadAll() {
     if (!loadedPhotos || loadedPhotos.length === 0) {
       alert("No images available to download.");
       return;
     }
 
-    alert("Starting download for " + loadedPhotos.length + " frames...");
+    const confirmDownload = confirm("Ready to download all " + loadedPhotos.length + " photos? Safari will open them in separate tabs if automatic downloads are blocked.");
+    if (!confirmDownload) return;
 
     loadedPhotos.forEach(function(photo, index) {
       setTimeout(function() {
-        const a = document.createElement("a");
-        a.href = photo.url;
-        a.download = photo.name || ("frame-" + (index + 1) + ".jpg");
-        a.target = "_blank";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }, index * 400); // Stagger downloads slightly to prevent browser blocking
+        downloadImageBlob(photo.url, photo.name || ("frame-" + (index + 1) + ".jpg"));
+      }, index * 600); // Increased delay to keep Safari from treating it as spam
     });
   }
 
-  // Remove disabled states and bind actions directly to template buttons
+  // Targeted button binding (no overlap with favorite buttons)
   function bindActionButtons() {
-    const allEls = document.querySelectorAll("button, a, div, span");
+    const buttons = document.querySelectorAll("button, a, div[role='button']");
 
-    allEls.forEach(function(el) {
-      const text = (el.textContent || "").toLowerCase().trim();
+    buttons.forEach(function(btn) {
+      // Ignore favorite buttons explicitly
+      if (btn.classList.contains("fav-btn") || btn.closest("#studio-carousel")) {
+        return;
+      }
 
-      // Fix "Send Favourites to Studio"
+      const text = (btn.textContent || "").toLowerCase().trim();
+
       if (text.includes("send favourites") || text.includes("send favorites")) {
-        const btn = el.closest("button, a, div") || el;
         btn.removeAttribute("disabled");
         btn.style.pointerEvents = "auto";
         btn.style.cursor = "pointer";
@@ -153,9 +166,7 @@
         };
       }
 
-      // Fix "Download All Frames"
       if (text.includes("download all") || text.includes("download frames")) {
-        const btn = el.closest("button, a, div") || el;
         btn.removeAttribute("disabled");
         btn.style.pointerEvents = "auto";
         btn.style.cursor = "pointer";
@@ -240,7 +251,9 @@
     }
     galleryContainer.innerHTML = html;
 
+    // Favoriting logic strictly isolated to .fav-btn clicks
     galleryContainer.onclick = function(e) {
+      e.stopPropagation();
       const btn = e.target.closest(".fav-btn");
       if (!btn) return;
 
